@@ -25,7 +25,7 @@ Speculation loses on both DB workloads at the batch that maximizes throughput, a
 
 ## Model
 
-From [`roofline/derivation_notes_adjusted/`](roofline/derivation_notes_adjusted/). Symbols:
+From [`roofline/derivation_notes_adjusted/`](roofline/derivation_notes_adjusted/). Note that times are seconds and capacities bytes.
 
 | symbol | meaning |
 |---|---|
@@ -37,15 +37,14 @@ From [`roofline/derivation_notes_adjusted/`](roofline/derivation_notes_adjusted/
 | $b_{kv}$ | bytes per cached KV element |
 | $B$ | batch, in concurrent sequences |
 | $L$, $L_{in}$, $L_{out}$ | context, prompt, and generated tokens; $L_{avg} = L_{in} + L_{out}/2$, and $L_{max}$ is the prompt plus the maximum output |
-| $\kappa$, $a$ | KV bytes per token per sequence, and attention seconds per query token per token of context |
+| $\kappa$ | KV bytes per token per sequence |
+| $a$ | attention coefficient: seconds per query token per token of context |
 | $w = \kappa/\beta$ | KV read seconds per token per sequence |
 | $D$, $V$, $\Omega$ | draft passes per round, drafted positions ($V{+}1$ verified), and accepted tokens per round |
 | $h$ | prefix cache hit rate |
 | subscript $d$ | the drafter: $N_d$, $t_{c,d}$, $\kappa_{d,eff}$ and so on, formed the same way |
 
-Times are seconds and capacities bytes. $t_{kv}$ is per sequence, $t_{attn}$ per query token.
-
-**Primitives:** Per pass, whole model:
+**Primitives:**
 
 $$
 t_w = \frac{N b_w}{\beta}
@@ -58,12 +57,12 @@ t_{attn}(L) = aL
 $$
 
 $$
-\kappa = 2\, n_{layers}\, n_{kv}\, d_h\, b_{kv}
+\kappa = 2 n_{layers} n_{kv} d_h b_{kv}
 \qquad\qquad
-a = \frac{4\, n_{layers}\, n_q\, d_h}{C}
+a = \frac{4 n_{layers} n_q d_h}{C}
 $$
 
-$t_w$ is the weight load; $t_c$ is compute per token pushed through; $t_{kv}$ is the KV read per sequence. $t_{attn}$ is per query token at context $L$. $QK^\top$ and $AV$ are each $n_q d_h$ multiply-accumulates per layer per context token, and a one-layer EAGLE-3 head has $a_d = a / n_{layers}$.
+$t_w$ is the weight load; $t_c$ is compute per token pushed through; $t_{kv}$ is the KV read per sequence; $t_{attn}$ is per query token at context $L$.
 
 **Prefill:**
 
