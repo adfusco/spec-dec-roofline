@@ -45,7 +45,7 @@ $$
 a = \frac{4\, n_{layers}\, n_q\, d_h}{C}
 $$
 
-$t_w$ is the weight load, paid once per pass regardless of $B$; $t_c$ is compute per token pushed through; $t_{kv}$ is the KV read per sequence. $t_{attn}$ is per query token at context $L$. $QK^\top$ and $AV$ are each $n_q d_h$ multiply-accumulates per layer per context token, and a one-layer EAGLE-3 head has $a_d = a / n_{layers}$.
+$t_w$ is the weight load; $t_c$ is compute per token pushed through; $t_{kv}$ is the KV read per sequence. $t_{attn}$ is per query token at context $L$. $QK^\top$ and $AV$ are each $n_q d_h$ multiply-accumulates per layer per context token, and a one-layer EAGLE-3 head has $a_d = a / n_{layers}$.
 
 **Prefill:** $h$ is the prefix cache hit rate
 
