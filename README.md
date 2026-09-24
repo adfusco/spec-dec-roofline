@@ -1,6 +1,6 @@
 # When Does Speculative Decoding Pay Off?
 
-A roofline model of the decode pass that predicts when speculative decoding stops helping, and a vLLM benchmark that tests the prediction. Evaluated at the **in-database operating point**: offline serving, throughput-maximizing, no latency SLA, with the batch pinned to whatever the KV cache will hold.
+Below is a roofline model of the decode pass that predicts when speculative decoding stops helping, and a vLLM benchmark that tests the prediction. We optimized for the **in-database operating point** using our model: offline serving, throughput-maximizing, no latency SLA, with the batch pinned to whatever the KV cache will hold. We then tested this configuration in vLLM.
 
 Research done under Prof. Jignesh Patel at CMU, on in-database LLM query workloads.
 
@@ -25,9 +25,27 @@ Speculation loses on both DB workloads at the batch that maximizes throughput, a
 
 ## Model
 
-From [`roofline/derivation_notes_adjusted/`](roofline/derivation_notes_adjusted/). Subscript $d$ is the drafter throughout, and $L_{avg} = L_{in} + L_{out}/2$.
+From [`roofline/derivation_notes_adjusted/`](roofline/derivation_notes_adjusted/). Symbols:
 
-**Primitives:** Per pass, whole model, batch $B$:
+| symbol | meaning |
+|---|---|
+| $C$, $\beta$ | accelerator compute (FLOP/s) and memory bandwidth (bytes/s) |
+| $M_{HBM}$, $M_{res}$ | HBM capacity and the headroom held back from the KV cache |
+| $TP$ | tensor-parallel size |
+| $N$, $b_w$ | target parameter count and bytes per weight |
+| $n_{layers}$, $n_q$, $n_{kv}$, $d_h$ | layers, query heads, KV heads, head dimension |
+| $b_{kv}$ | bytes per cached KV element |
+| $B$ | batch, in concurrent sequences |
+| $L$, $L_{in}$, $L_{out}$ | context, prompt, and generated tokens; $L_{avg} = L_{in} + L_{out}/2$, and $L_{max}$ is the prompt plus the maximum output |
+| $\kappa$, $a$ | KV bytes per token per sequence, and attention seconds per query token per token of context |
+| $w = \kappa/\beta$ | KV read seconds per token per sequence |
+| $D$, $V$, $\Omega$ | draft passes per round, drafted positions ($V{+}1$ verified), and accepted tokens per round |
+| $h$ | prefix cache hit rate |
+| subscript $d$ | the drafter: $N_d$, $t_{c,d}$, $\kappa_{d,eff}$ and so on, formed the same way |
+
+Times are seconds and capacities bytes. $t_{kv}$ is per sequence, $t_{attn}$ per query token.
+
+**Primitives:** Per pass, whole model:
 
 $$
 t_w = \frac{N b_w}{\beta}
@@ -47,7 +65,7 @@ $$
 
 $t_w$ is the weight load; $t_c$ is compute per token pushed through; $t_{kv}$ is the KV read per sequence. $t_{attn}$ is per query token at context $L$. $QK^\top$ and $AV$ are each $n_q d_h$ multiply-accumulates per layer per context token, and a one-layer EAGLE-3 head has $a_d = a / n_{layers}$.
 
-**Prefill:** $h$ is the prefix cache hit rate
+**Prefill:**
 
 $$
 T_{pre}^{AR} = \max\left(B\left(t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right)(1-h),\ t_w\right) + B\, t_{kv}(L_{in})(1-h)
@@ -91,15 +109,13 @@ B_{KV} = \frac{TP\left(M_{HBM} - M_{res}\right) - N b_w - N_d b_{w,d}}
 \kappa_{eff} = \kappa \max\left(1, \tfrac{TP}{n_{kv}}\right)
 $$
 
-with $L_{max}$ being the prompt plus maximum output tokens.
-
-**Break-even batch:** Set $\Omega\, T_{dec}^{AR} = T_{dec}^{spec}$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, taking $L+V+1 \approx L$:
+**Break-even batch:** The decode-only speedup is $S_{dec} = \Omega\, T_{dec}^{AR} / T_{dec}^{spec}$, which is what $B_{be}$ and $L_{crit}$ are built on, not $S_{e2e}$. Setting $S_{dec} = 1$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, taking $L+V+1 \approx L$:
 
 $$
 B_{be} = \frac{\Omega\, t_w - D\, t_{w,d}}{(V{+}1)\left(t_c + t_{attn}(L)\right) - (\Omega-1)\, t_{kv}(L) + D\, t_{kv,d}(L)}
 $$
 
-The KV rebate $(\Omega-1)\, t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound; dividing through by $B$ and solving $S=1$ for $L$, with $w = \kappa/\beta$:
+The KV rebate $(\Omega-1)\, t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound; dividing through by $B$ and solving $S_{dec}=1$ for $L$:
 
 $$
 L_{crit} = \frac{(V{+}1-\Omega)\, t_c + D\, t_{c,d}}{(\Omega-1)\, w - (V{+}1-\Omega)\, a - D\,(a_d + w_d)}
