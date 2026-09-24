@@ -1,0 +1,33 @@
+{
+  "name": "llama8b_relqueries_tp_d1_fp8",
+  "target": "NousResearch/Meta-Llama-3.1-8B-Instruct",
+  "dataset_kind": "custom",
+  "dataset_file": "relqueries_sample_1000.jsonl",
+  "num_prompts": 2560,
+  "max_num_seqs": [
+    128,
+    256,
+    384
+  ],
+  "configs": {
+    "baseline": "",
+    "eagle3": "{\"method\": \"eagle3\", \"model\": \"yuhuili/EAGLE3-LLaMA3.1-Instruct-8B\", \"num_speculative_tokens\": 1}"
+  },
+  "gpu": "H200:1",
+  "tp_size": 1,
+  "n_params_b": 8.03,
+  "max_model_len": 4096,
+  "gpu_mem_util": 0.9,
+  "temperature": 0.0,
+  "enable_thinking": false,
+  "output_mode": "natural",
+  "output_len": 512,
+  "enable_prefix_caching": true,
+  "save_lengths": false,
+  "save_detailed": true,
+  "two_phase": false,
+  "step_log": false,
+  "draft_timer": false,
+  "quantization": "fp8",
+  "timeout_hours": 4.0
+}

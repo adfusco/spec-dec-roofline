@@ -1,0 +1,11 @@
+# run: /results/govreport_qwen14b_512_out256/20260914_100733
+# offline throughput | GPU=a100-40gb x TP=1 | peak=312 TFLOP/s (dense bf16) | N_params=14.8B
+# out_tok/s = decode throughput; tot_tok/s = (prompt+output)/elapsed; avg_out_len = mean output tokens/req; acc_len = mean accepted+bonus/step; per_pos_accept = conditional a_i/a_(i-1); MFU% = forward-only, useful-token model FLOPs utilization
+
+     cfg  max_seqs  req/s  out_tok/s  tot_tok/s speedup  avg_out_len acc_len per_pos_accept  MFU%  ss_out_tok/s ss_speedup  conc_pk
+baseline        32   3.30        908       2613   1.00x          275       -              -  24.8           914      1.00x       32
+baseline        52   4.32       1191       3426   1.00x          276       -              -  32.5          1203      1.00x       52
+baseline        64   4.61       1271       3655   1.00x          275       -              -  34.7          1283      1.00x       64
+  eagle3        32   4.10       1130       3250   1.24x          275    2.37 0.67/0.64/0.62  30.8          1135      1.24x       32
+  eagle3        52   4.10       1129       3246   0.95x          276    2.37 0.67/0.64/0.62  30.8          <NA>          -       35
+  eagle3        64   4.10       1129       3247   0.89x          276    2.37 0.67/0.64/0.62  30.8          <NA>          -       35

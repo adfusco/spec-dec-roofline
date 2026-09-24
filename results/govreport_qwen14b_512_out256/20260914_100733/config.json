@@ -1,0 +1,33 @@
+{
+  "name": "govreport_qwen14b_512_out256",
+  "target": "Qwen/Qwen3-14B",
+  "dataset_kind": "custom",
+  "dataset_file": "govreport_qwen_in512_out256.jsonl",
+  "num_prompts": 2560,
+  "max_num_seqs": [
+    32,
+    52,
+    64
+  ],
+  "configs": {
+    "baseline": "",
+    "eagle3": "{\"method\": \"eagle3\", \"model\": \"RedHatAI/Qwen3-14B-speculator.eagle3\", \"num_speculative_tokens\": 3}"
+  },
+  "gpu": "A100-40GB:1",
+  "tp_size": 1,
+  "n_params_b": 14.8,
+  "max_model_len": 1536,
+  "gpu_mem_util": 0.9,
+  "temperature": 0.0,
+  "enable_thinking": false,
+  "output_mode": "natural",
+  "output_len": 768,
+  "enable_prefix_caching": true,
+  "save_lengths": false,
+  "save_detailed": true,
+  "two_phase": false,
+  "step_log": false,
+  "draft_timer": false,
+  "quantization": "",
+  "timeout_hours": 4.0
+}

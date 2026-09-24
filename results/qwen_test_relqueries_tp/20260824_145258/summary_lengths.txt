@@ -1,0 +1,7 @@
+# run: /Users/alessandrofusco/Desktop/projects/sd-db-research/spec-decode-roofline/results/qwen_test_relqueries_tp/20260824_145258
+# length profile (tokens/request) | clip% = share of natural outputs hitting the output_len cap
+
+           metric    n  mean  std  min  p50  p90  p99  max clip%
+            input 1000  79.5 45.1   38   70  114  245  682     -
+output (baseline) 1000   9.8 10.4    2    4   26   40   58   0.0
+  output (eagle3) 1000   9.8 10.4    2    4   26   40   56   0.0

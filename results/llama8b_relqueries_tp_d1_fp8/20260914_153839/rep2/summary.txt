@@ -1,0 +1,11 @@
+# run: /results/llama8b_relqueries_tp_d1_fp8/20260914_153839/rep2
+# offline throughput | GPU=h200 x TP=1 | peak=989 TFLOP/s (dense bf16) | N_params=8.0B
+# out_tok/s = decode throughput; tot_tok/s = (prompt+output)/elapsed; avg_out_len = mean output tokens/req; acc_len = mean accepted+bonus/step; per_pos_accept = conditional a_i/a_(i-1); MFU% = forward-only, useful-token model FLOPs utilization
+
+     cfg  max_seqs  req/s  out_tok/s  tot_tok/s speedup  avg_out_len acc_len per_pos_accept  MFU%  ss_out_tok/s ss_speedup  conc_pk
+baseline       128 190.91       1713      16383   1.00x            9       -              -  26.6          4215      1.00x      128
+baseline       256 211.05       1897      18115   1.00x            9       -              -  29.4          6162      1.00x      256
+baseline       384 198.85       1781      17061   1.00x            9       -              -  27.7          7067      1.00x      384
+  eagle3       128 180.69       1624      15508   0.95x            9    1.64           0.64  25.2          4253      1.01x      128
+  eagle3       256 185.67       1668      15935   0.88x            9    1.64           0.64  25.9          5126      0.83x      256
+  eagle3       384 206.71       1855      17739   1.04x            9    1.64           0.64  28.8          5223      0.74x      384

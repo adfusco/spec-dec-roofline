@@ -1,0 +1,9 @@
+# run: /results/govreport_llama_2k_out128/20260831_161426
+# offline throughput | GPU=a100-40gb x TP=1 | peak=312 TFLOP/s (dense bf16) | N_params=8.0B
+# out_tok/s = decode throughput; tot_tok/s = (prompt+output)/elapsed; avg_out_len = mean output tokens/req; acc_len = mean accepted+bonus/step; per_pos_accept = conditional a_i/a_(i-1); MFU% = forward-only, useful-token model FLOPs utilization
+
+     cfg  max_seqs  req/s  out_tok/s  tot_tok/s speedup  avg_out_len acc_len per_pos_accept  MFU%  conc_pk
+baseline        32   7.63          8      15649   1.00x            1       -              -  80.6       10
+baseline        64   7.64          8      15668   1.00x            1       -              -  80.7       10
+  eagle3        32   7.26          7      14877   0.95x            1       -              -  76.6        9
+  eagle3        64   7.26          7      14883   0.95x            1       -              -  76.6        9

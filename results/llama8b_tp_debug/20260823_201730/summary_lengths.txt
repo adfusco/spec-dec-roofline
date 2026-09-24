@@ -1,0 +1,7 @@
+# run: /results/llama8b_tp_debug/20260823_201730
+# length profile (tokens/request) | clip% = share of natural outputs hitting the output_len cap
+
+          metric  n  mean  std  min  p50  p90  p99  max clip%
+           input 16  78.0 34.1   40   75  127  184  184     -
+ output (eagle3) 16   7.2  7.5    2    3   20   25   25   0.0
+context (eagle3) 16  85.2 33.8   49   77  137  186  186     -

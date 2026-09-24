@@ -1,0 +1,9 @@
+# run: /results/govreport_llama_512_out512/20260831_160011
+# length profile (tokens/request) | clip% = share of natural outputs hitting the output_len cap
+
+            metric    n  mean  std  min  p50  p90  p99  max clip%
+             input 1024 512.9  0.3  512  513  513  513  513     -
+ output (baseline) 1024 445.9 28.5  353  445  481  520  581   0.0
+   output (eagle3) 1024 445.6 28.4  367  445  481  526  618   0.0
+context (baseline) 1024 958.7 28.5  866  957  994 1033 1094     -
+  context (eagle3) 1024 958.5 28.4  880  958  993 1039 1131     -

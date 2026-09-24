@@ -1,0 +1,7 @@
+# run: /results/llama8b_relqueries_tp_d1_fp8/20260914_215434/rep3
+# length profile (tokens/request) | clip% = share of natural outputs hitting the output_len cap
+
+           metric     n  mean  std  min  p50  p90  p99  max clip%
+            input 20000  77.4 50.4   36   67  109  284 1320     -
+output (baseline) 20000   8.8  9.7    2    3   25   35  153   0.0
+  output (eagle3) 20000   8.8  9.7    2    3   25   35  153   0.0

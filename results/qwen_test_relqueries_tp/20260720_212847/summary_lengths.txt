@@ -1,0 +1,7 @@
+# run: /results/qwen_test_relqueries_tp/20260720_212847
+# length profile (tokens/request) | clip% = share of natural outputs hitting the output_len cap
+
+           metric    n  mean  std  min  p50  p90  p99  max clip%
+            input 2560  79.4 56.5   38   69  109  286 1323     -
+output (baseline) 2560   9.2 10.2    2    2   26   39   81   0.0
+  output (eagle3) 2560   9.2 10.2    2    2   26   39   75   0.0

@@ -1,0 +1,13 @@
+# run: /results/qwen_test_relqueries_tp/20260824_144146
+# offline throughput | GPU=a100-40gb x TP=4 | peak=1248 TFLOP/s (dense bf16) | N_params=32.8B
+# out_tok/s = decode throughput; tot_tok/s = (prompt+output)/elapsed; avg_out_len = mean output tokens/req; acc_len = mean accepted+bonus/step; per_pos_accept = conditional a_i/a_(i-1); MFU% = forward-only, useful-token model FLOPs utilization
+
+     cfg  max_seqs  req/s  out_tok/s  tot_tok/s speedup  avg_out_len acc_len per_pos_accept  MFU%  ss_out_tok/s ss_speedup  conc_pk
+baseline        32 104.37        104       8397   1.00x            1       -              -  44.1             0          -       32
+baseline        64 118.14        118       9505   1.00x            1       -              -  50.0             0          -       64
+baseline       128 119.59        120       9621   1.00x            1       -              -  50.6             0          -      128
+baseline       256 125.55        126      10101   1.00x            1       -              -  53.1             0          -      242
+  eagle3        32 102.90        103       8279   0.99x            1       -              -  43.5             0          -       32
+  eagle3        64 108.45        108       8725   0.92x            1       -              -  45.9             0          -       64
+  eagle3       128 112.84        113       9079   0.94x            1       -              -  47.7             0          -      128
+  eagle3       256 118.85        119       9562   0.95x            1       -              -  50.3          <NA>          -      219

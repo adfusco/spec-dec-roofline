@@ -1,0 +1,33 @@
+{
+  "name": "govreport_llama_2k_out256_d5_fp8",
+  "target": "NousResearch/Meta-Llama-3.1-8B-Instruct",
+  "dataset_kind": "custom",
+  "dataset_file": "govreport_llama_in2k_out256.jsonl",
+  "num_prompts": 2048,
+  "max_num_seqs": [
+    128,
+    256,
+    384
+  ],
+  "configs": {
+    "baseline": "",
+    "eagle3": "{\"method\": \"eagle3\", \"model\": \"TanBaby/EAGLE3-LLaMA3.1-Instruct-8B-YARN-64K\", \"num_speculative_tokens\": 5}"
+  },
+  "gpu": "H200:1",
+  "tp_size": 1,
+  "n_params_b": 8.03,
+  "max_model_len": 3072,
+  "gpu_mem_util": 0.9,
+  "temperature": 0.0,
+  "enable_thinking": false,
+  "output_mode": "natural",
+  "output_len": 768,
+  "enable_prefix_caching": true,
+  "save_lengths": false,
+  "save_detailed": false,
+  "two_phase": false,
+  "step_log": false,
+  "draft_timer": true,
+  "quantization": "fp8",
+  "timeout_hours": 4.0
+}

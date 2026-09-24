@@ -1,0 +1,125 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath, amssymb}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{float}
+
+\begin{document}
+
+\section*{Time primitives \& definitions:}
+
+\begin{equation*}
+N = \text{parameter count,}
+\quad
+C = \text{compute (FLOP/s),}
+\quad
+\beta = \text{bandwidth (bytes/s)}
+\end{equation*}
+\begin{equation*}
+L_{in} = \text{input token count}
+\qquad\qquad
+L_{out} = \text{output token count}
+\qquad\qquad
+L_{avg} = L_{in} + L_{out}/2
+\end{equation*}
+\begin{equation*}
+t_{\mathrm{weight}} = \frac{N b_w}{\beta}
+\qquad\qquad
+t_{kv}(L) = \frac{\kappa L}{\beta} \ \ \text{(per sequence)}
+\qquad\qquad
+t_{c} = \frac{2N}{C} \ \ \text{(per token)}
+\end{equation*}
+where multiply--accumulate is 2 FLOPs, and
+\begin{equation*}
+\kappa = 2 \cdot
+\underbrace{n_{\mathrm{layers}}}_{\substack{\text{transformer}\\\text{layers}}} \cdot
+\underbrace{n_{kv}}_{\text{KV-heads}} \cdot
+\underbrace{d_h}_{\text{head-dim}} \cdot
+\underbrace{b_{kv}}_{\substack{\text{bytes per}\\\text{KV element}}}
+\qquad
+b_w = \text{bytes per weight}
+\end{equation*}
+\begin{equation*}
+t_{\mathrm{attn}}(L) = a L, \qquad a = \frac{4\, n_{\mathrm{layers}}\, n_q\, d_h}{C}
+\qquad
+t_{\mathrm{attn},d}(L) = a_d L, \qquad a_d = \frac{4\, n_{\mathrm{layers},d}\, n_{q,d}\, d_{h,d}}{C}
+\end{equation*}
+
+Prefill attends over all $L_{in}$ positions at once.  Causal masking leaves
+$\sum_{i=1}^{L_{in}} i = L_{in}(L_{in}+1)/2$ query--context pairs, so per
+sequence:
+
+\begin{equation*}
+T_{\mathrm{attn}}^{pre}(L) = \tfrac{1}{2}\, a L (L+1) \;\approx\; \tfrac{1}{2} a L^2,
+\qquad
+T_{\mathrm{attn},d}^{pre}(L) = \tfrac{1}{2}\, a_d L^2
+\end{equation*}
+
+\section*{Prefill cost:}
+
+\begin{align*}
+T_{prefill}^{AR} &= \max\left(B \left[t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right](1-h),\ t_w \right) + B\, t_{kv}(L_{in})(1-h) \tag{$h =$ prefix cache hit rate}\\
+T_{prefill}^{spec} &= T_{\mathrm{prefill}}^{AR} + \left[\max\left(B \left[t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right](1-h),\ t_{w,d} \right) + B\, t_{kv,d}(L_{in})(1-h)\right] \tag{$d =$ drafter}
+\end{align*}
+
+\section*{Decode pass cost:}
+
+\begin{align*}
+T_{\mathrm{AR}}(L) &= \max\left(B (t_c + t_{\mathrm{attn}}(L)),\ t_w\right) + B t_{kv}(L+1) \tag{no KV overlap when compute bound} \\[6pt]
+T_{\mathrm{spec}}(L) &= T_{\mathrm{spec}}^{tgt}(L) + T_{\mathrm{spec}}^{draft}(L) \\[6pt]
+T_{\mathrm{spec}}^{tgt}(L) &= \max\left((V+1) B (t_c + t_{\mathrm{attn}}(L)),\ t_w\right) + B t_{kv}(L+V+1) \\[6pt]
+T_{\mathrm{spec}}^{draft}(L) &= D\left[\max\left(B (t_{c,d} + t_{\mathrm{attn},d}(L)),\ t_{w,d}\right) + B t_{kv,d}(L)\right]
+\end{align*}
+\section*{End-to-end speedup:}
+
+\begin{align*}
+T_{decode}^{AR} = L_{out} \cdot T_{AR}(L_{avg}) \\
+T_{decode}^{spec} = \frac{L_{out}}\Omega \cdot T_{spec}(L_{avg}) \\\\
+S_{e2e} = \frac{T_{prefill}^{AR} + T_{decode}^{AR}}{T_{prefill}^{spec} + T_{decode}^{spec}}
+\end{align*}
+
+\section*{Achievable batch:}
+
+\begin{equation*}
+B_{\mathrm{ach}} = \min\left(B_{KV},\ B_{\mathrm{conc}}\right)
+\end{equation*}
+
+\begin{equation*}
+B_{KV} = \frac{TP \cdot \left(M_{\mathrm{HBM}} - M_{\mathrm{reserve}}\right) - N b_w - N_d b_{w,d}}
+              {\left(\kappa_{\mathrm{eff}} + \kappa_{d,\mathrm{eff}}\right) \cdot L_{\mathrm{in + out}}}
+\qquad
+\left(\ \kappa_{\mathrm{eff}} = \kappa \cdot \max\!\left(1,\ \frac{TP}{n_{kv}}\right)\ \right)
+\end{equation*}
+
+\section*{Assumptions:}
+
+\noindent
+Each is listed with the direction and, where measured, the size of its error
+(see \texttt{MODEL\_GAPS.md}; Llama-3.1-8B + EAGLE-3 on A100-40).
+
+\begin{enumerate}
+  \item \textbf{Weight streaming and compute overlap perfectly}: the
+    $\max(\cdot,\cdot)$ charges only the larger and treats the smaller as free.
+    \emph{Optimistic.} Where both passes are weight bound the model predicts a
+    verify pass costs the same as an AR pass (ratio $1.00$); measured
+    $1.35$--$1.46$ at $B \le 32$. This is the dominant error.
+  \item \textbf{Peak bandwidth and FLOP/s are achieved.} \emph{Optimistic.} The
+    AR forward alone runs $1.18$--$1.35\times$ the weight-bound prediction at one
+    query token per sequence. Largely cancels in a ratio.
+  \item \textbf{Tensor-parallel communication is free.} $S$ is TP invariant
+    here; TP enters only through $B_{KV}$. Unmeasured; false on PCIe parts.
+  \item \textbf{Per-step overhead is zero}: scheduling, sampling, rejection
+    bookkeeping, block tables. Measured at $3$--$5\%$ of a step on both arms, so
+    this one is nearly true.
+  \item \textbf{$\Omega$ is independent of $B$ and $L_{in}$}, depending only on
+    $L_{out}$. Measured true across the Phase 1 grid ($2.24$--$2.70$, set by
+    $L_{out}$ alone).
+  \item \textbf{$\kappa_d = \kappa / n_{\mathrm{layers}}$}: the drafter reads
+    one decoder layer of KV. \emph{Optimistic:} measured $1.6\times$ low.
+  \item \textbf{No KV/compute overlap when compute bound} (the additive
+    $B\,t_{kv}$ term), and prefill is compute bound at the batches considered.
+  \item \textbf{Greedy decoding}, so $\Omega$ is deterministic, and a chain
+    drafter with $D = V$.
+\end{enumerate}
+
+\end{document}

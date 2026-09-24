@@ -1,0 +1,11 @@
+# Local requirements: the roofline model and the result analysis
+#
+# The benchmark's own dependencies (vllm==0.23.0 and its CUDA stack) 
+# are pinned inside the Modal container image in bench/common.py
+# and are installed remotely
+
+numpy>=1.26
+matplotlib>=3.8      # roofline/model.py figures
+pandas>=2.1          # analysis/summarize_*.py
+tabulate>=0.9        # analysis table formatting
+modal>=0.63          # only needed to launch benchmarks (bench/)
