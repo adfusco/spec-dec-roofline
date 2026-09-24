@@ -271,7 +271,7 @@ $L_{in}$ ≤ 2048: longer than this is at the size of a document, not a field, a
 
 ## Model gaps
 
-Although the model's optimism is beneficial for making experimental decisions, I was curious why this was the case, so I patched vLLM's V2 model runner with CUDA-event instrumentation ([`bench/draft_timer.py`](bench/draft_timer.py)) to time each generation step.
+Although the model's optimism is beneficial for making experimental decisions, it is worth knowing why, so we patched vLLM's V2 model runner with CUDA-event instrumentation ([`bench/draft_timer.py`](bench/draft_timer.py)) to time each generation step.
 
 `GPUModelRunner.execute_model` and `.sample_tokens` bracket the engine step, `AutoRegressiveSpeculator.propose` isolates the draft phase, and `ModelCudaGraphManager.run_fullgraph` / `CudaGraphManager.run_pw_graph` catch the target forward.
 
@@ -297,7 +297,7 @@ Although the model's optimism is beneficial for making experimental decisions, I
 
 ## Scope and further research
 
-- It would be beneficial to test disaggreated prefill and decode to determine how much error results from ignoring continuous batching
+- It would be beneficial to test disaggregated prefill and decode to determine how much error results from ignoring continuous batching
 - One highly specific workload sits outside our scope entirely: `LLM.SUMMARIZE_AGG` (Snowflake), 8k input and 1k output at the extreme. Both the model and the $L_{crit}$ screening rule put that firmly in speculation's favorable regime
 - Only EAGLE-3 drafters were measured. An n-gram or lookup drafter has near-zero draft cost and would change the $T_{spec}$ draft term
 
