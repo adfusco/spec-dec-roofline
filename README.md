@@ -49,9 +49,13 @@ $t_w$ is the weight load, paid once per pass regardless of $B$; $t_c$ is compute
 
 **Prefill:** $h$ is the prefix cache hit rate
 
-$$T_{pre}^{AR} = \max\left(B\left[t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right](1-h),\ t_w\right) + B\, t_{kv}(L_{in})(1-h)$$
+$$
+T_{pre}^{AR} = \max\left(B\left(t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right)(1-h),\ t_w\right) + B\, t_{kv}(L_{in})(1-h)
+$$
 
-$$T_{pre}^{spec} = T_{pre}^{AR} + \left[\max\left(B\left[t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right](1-h),\ t_{w,d}\right) + B\, t_{kv,d}(L_{in})(1-h)\right]$$
+$$
+T_{pre}^{spec} = T_{pre}^{AR} + \max\left(B\left(t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right)(1-h),\ t_{w,d}\right) + B\, t_{kv,d}(L_{in})(1-h)
+$$
 
 The drafter pays a full prefill: an EAGLE-3 head reads the target's hidden states, so it cannot skip the prompt.
 
