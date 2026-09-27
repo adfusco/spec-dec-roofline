@@ -67,11 +67,11 @@ $t_w$ is the weight load; $t_c$ is compute per token pushed through; $t_{kv}$ is
 **Prefill:**
 
 $$
-T_{pre}^{AR} = \max\left(B\left(t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right)(1-h),\ t_w\right) + B\, t_{kv}(L_{in})(1-h)
+T_{pre}^{AR} = \max\left(B\left(t_c L_{in} + \tfrac{1}{2} a L_{in}^2\right)(1-h),\ t_w\right) + B t_{kv}(L_{in})(1-h)
 $$
 
 $$
-T_{pre}^{spec} = T_{pre}^{AR} + \max\left(B\left(t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right)(1-h),\ t_{w,d}\right) + B\, t_{kv,d}(L_{in})(1-h)
+T_{pre}^{spec} = T_{pre}^{AR} + \max\left(B\left(t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right)(1-h),\ t_{w,d}\right) + B t_{kv,d}(L_{in})(1-h)
 $$
 
 The drafter pays a full prefill since an EAGLE-3 head reads the target's hidden states, so it cannot skip the prompt.
@@ -79,15 +79,15 @@ The drafter pays a full prefill since an EAGLE-3 head reads the target's hidden 
 **Decode:** $D$ draft passes, then one verify pass over $V+1$ positions yielding $\Omega$ accepted tokens
 
 $$
-T_{dec}^{AR}(L) = \max\left(B\left(t_c + t_{attn}(L)\right),\ t_w\right) + B\, t_{kv}(L+1)
+T_{dec}^{AR}(L) = \max\left(B\left(t_c + t_{attn}(L)\right),\ t_w\right) + B t_{kv}(L+1)
 $$
 
 $$
-T_{verify}(L) = \max\left((V{+}1)\, B\left(t_c + t_{attn}(L)\right),\ t_w\right) + B\, t_{kv}(L{+}V{+}1)
+T_{verify}(L) = \max\left((V{+}1) B\left(t_c + t_{attn}(L)\right),\ t_w\right) + B t_{kv}(L{+}V{+}1)
 $$
 
 $$
-T_{draft}(L) = D\left[\max\left(B\left(t_{c,d} + t_{attn,d}(L)\right),\ t_{w,d}\right) + B\, t_{kv,d}(L)\right]
+T_{draft}(L) = D\left[\max\left(B\left(t_{c,d} + t_{attn,d}(L)\right),\ t_{w,d}\right) + B t_{kv,d}(L)\right]
 $$
 
 $$
@@ -97,8 +97,8 @@ $$
 **End-to-end speedup, and batch capacity:**
 
 $$
-S_{e2e} = \frac{T_{pre}^{AR} + L_{out}\, T_{dec}^{AR}(L_{avg})}
-               {T_{pre}^{spec} + \dfrac{L_{out}}{\Omega}\, T_{dec}^{spec}(L_{avg})}
+S_{e2e} = \frac{T_{pre}^{AR} + L_{out} T_{dec}^{AR}(L_{avg})}
+               {T_{pre}^{spec} + \dfrac{L_{out}}{\Omega} T_{dec}^{spec}(L_{avg})}
 $$
 
 $$
@@ -108,16 +108,16 @@ B_{KV} = \frac{TP\left(M_{HBM} - M_{res}\right) - N b_w - N_d b_{w,d}}
 \kappa_{eff} = \kappa \max\left(1, \tfrac{TP}{n_{kv}}\right)
 $$
 
-**Break-even batch:** The decode-only speedup is $S_{dec} = \Omega\, T_{dec}^{AR} / T_{dec}^{spec}$. We use this to calculate $B_{be}$ and $L_{crit}$. Setting $S_{dec} = 1$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, then taking $L+V+1 \approx L$:
+**Break-even batch:** The decode-only speedup is $S_{dec} = \Omega T_{dec}^{AR} / T_{dec}^{spec}$. We use this to calculate $B_{be}$ and $L_{crit}$. Setting $S_{dec} = 1$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, then taking $L+V+1 \approx L$:
 
 $$
-B_{be} = \frac{\Omega\, t_w - D\, t_{w,d}}{(V{+}1)\left(t_c + t_{attn}(L)\right) - (\Omega-1)\, t_{kv}(L) + D\, t_{kv,d}(L)}
+B_{be} = \frac{\Omega t_w - D t_{w,d}}{(V{+}1)\left(t_c + t_{attn}(L)\right) - (\Omega-1) t_{kv}(L) + D t_{kv,d}(L)}
 $$
 
-The KV rebate $(\Omega-1)\, t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound. If we divide through by $B$ and solve $S_{dec}=1$ for $L$:
+The KV rebate $(\Omega-1) t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound. If we divide through by $B$ and solve $S_{dec}=1$ for $L$:
 
 $$
-L_{crit} = \frac{(V{+}1-\Omega)\, t_c + D\, t_{c,d}}{(\Omega-1)\, w - (V{+}1-\Omega)\, a - D\,(a_d + w_d)}
+L_{crit} = \frac{(V{+}1-\Omega) t_c + D t_{c,d}}{(\Omega-1) w - (V{+}1-\Omega) a - D(a_d + w_d)}
 $$
 
 Below $L_{crit}$, $B_{be}$ is finite. At or above it the model predicts speculation to win at every batch, and $B_{be} = \infty$. For Llama-3.1-8B + EAGLE-3 on A100-40 at depth 3 and $\Omega = 2.44$, for example, $L_{crit} \approx 800$ and $B_{be}(576) = 163$.
