@@ -1,6 +1,6 @@
 # When Does Speculative Decoding Pay Off?
 
-Below is a roofline model of the decode pass that predicts when speculative decoding stops helping, and a vLLM benchmark that tests the prediction. We optimized for the **in-database operating point** using our model: offline serving, throughput-maximizing, no latency SLA, with the batch pinned to whatever the KV cache will hold. We then tested this configuration in vLLM.
+Below is a roofline model of the decode pass that predicts when speculative decoding stops helping. We also display results testing the accuracy of the model. We optimized for the in-database operating point using our model: offline serving, throughput-maximizing, no latency SLA, with the batch pushed to whatever the KV cache can hold. We then tested this configuration in vLLM.
 
 Research done under Prof. Jignesh Patel at CMU, on in-database LLM query workloads.
 
@@ -10,9 +10,9 @@ Research done under Prof. Jignesh Patel at CMU, on in-database LLM query workloa
 
 Speculative decoding spends compute, which is free while the pass is weight-bound, to avoid weight loads. In-DB queries have long inputs and short outputs, which pushes achievable batch past the point where the verify pass is weight-bound.
 
-**Metrics:** Throughput is **output tokens/s per GPU**: `out_tok/s` divided by TP. Measurements are **steady-state** (`ss_out_tok/s`). Overall `out_tok/s` is diluted by ramp-up and drain, which run at lower batch and thus favor speculation.
+**Metrics:** Throughput is output tokens/s per GPU, `out_tok/s` divided by TP. Measurements are steady-state (`ss_out_tok/s`). Overall `out_tok/s` is diluted by ramp-up and drain, which run at lower batch and thus favor speculation.
 
-**Key result:** Llama-3.1-8B + EAGLE-3 on an H200 at fp8, the configuration the model picks for maximum throughput, with each arm at its best batch (details in *Experiments*):
+**Key result:** Llama-3.1-8B + EAGLE-3 on an H200 at fp8, the configuration the model picks for maximum throughput (details in *Experiments*):
 
 | workload | measured | model at measured $\Omega$ | model at α=0.80 |
 |---|---|---|---|
@@ -74,7 +74,7 @@ $$
 T_{pre}^{spec} = T_{pre}^{AR} + \max\left(B\left(t_{c,d} L_{in} + \tfrac{1}{2} a_d L_{in}^2\right)(1-h),\ t_{w,d}\right) + B\, t_{kv,d}(L_{in})(1-h)
 $$
 
-The drafter pays a full prefill: an EAGLE-3 head reads the target's hidden states, so it cannot skip the prompt.
+The drafter pays a full prefill since an EAGLE-3 head reads the target's hidden states, so it cannot skip the prompt.
 
 **Decode:** $D$ draft passes, then one verify pass over $V+1$ positions yielding $\Omega$ accepted tokens
 
@@ -108,21 +108,21 @@ B_{KV} = \frac{TP\left(M_{HBM} - M_{res}\right) - N b_w - N_d b_{w,d}}
 \kappa_{eff} = \kappa \max\left(1, \tfrac{TP}{n_{kv}}\right)
 $$
 
-**Break-even batch:** The decode-only speedup is $S_{dec} = \Omega\, T_{dec}^{AR} / T_{dec}^{spec}$, which is what $B_{be}$ and $L_{crit}$ are built on, not $S_{e2e}$. Setting $S_{dec} = 1$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, taking $L+V+1 \approx L$:
+**Break-even batch:** The decode-only speedup is $S_{dec} = \Omega\, T_{dec}^{AR} / T_{dec}^{spec}$. We use this to calculate $B_{be}$ and $L_{crit}$. Setting $S_{dec} = 1$ on the branch where the AR pass and the drafter are weight-bound and the verify pass is compute-bound, then taking $L+V+1 \approx L$:
 
 $$
 B_{be} = \frac{\Omega\, t_w - D\, t_{w,d}}{(V{+}1)\left(t_c + t_{attn}(L)\right) - (\Omega-1)\, t_{kv}(L) + D\, t_{kv,d}(L)}
 $$
 
-The KV rebate $(\Omega-1)\, t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound; dividing through by $B$ and solving $S_{dec}=1$ for $L$:
+The KV rebate $(\Omega-1)\, t_{kv}(L)$ grows linearly in $L$ and shrinks the denominator. At a saturated batch every pass is compute-bound. If we divide through by $B$ and solve $S_{dec}=1$ for $L$:
 
 $$
 L_{crit} = \frac{(V{+}1-\Omega)\, t_c + D\, t_{c,d}}{(\Omega-1)\, w - (V{+}1-\Omega)\, a - D\,(a_d + w_d)}
 $$
 
-Below $L_{crit}$, $B_{be}$ is finite. At or above it the model says speculation wins at every batch and $B_{be} = \infty$. For Llama-3.1-8B + EAGLE-3 on A100-40 at depth 3 and $\Omega = 2.44$, for example, $L_{crit} \approx 800$ and $B_{be}(576) = 163$.
+Below $L_{crit}$, $B_{be}$ is finite. At or above it the model predicts speculation to win at every batch, and $B_{be} = \infty$. For Llama-3.1-8B + EAGLE-3 on A100-40 at depth 3 and $\Omega = 2.44$, for example, $L_{crit} \approx 800$ and $B_{be}(576) = 163$.
 
-For $L < L_{crit}$ there is no reason to test past $B_{be}$: the model already predicts a loss there, and it is optimistic about where that loss starts (see *Model gaps*). Offline serving runs at $B_{KV}$, so any workload with $B_{KV} > B_{be}$ is in that region at its operating point. The converse does not hold above $L_{crit}$: $B_{be} = \infty$ comes from the over-credited KV rebate and is not a guarantee.
+For $L < L_{crit}$ there is no reason to test past $B_{be}$. The model already predicts a loss in this regime. Offline serving runs at $B_{KV}$ to maximize throughput, so any workload with $B_{KV} > B_{be}$ is in that region in production.
 
 ### Assumptions
 
@@ -213,7 +213,7 @@ Notice that every winner is with the H200 at fp8 with a large batch. Throughput 
 
 ## Optimization 2: maximize speculative speedup
 
-Now what if we look for a configuration where speculative decoding should win? Let's change the objective to $S_{e2e}$: first at each workload above, then with $L_{in}$ and $L_{out}$ also free variables.
+Now what if we look for a configuration where speculative decoding should win? Let's change the objective to $S_{e2e}$. First we measure at each workload above, then with $L_{in}$ and $L_{out}$ also as free variables.
 
 | workload | best $S_{e2e}$ | tok/s/GPU | share of max throughput |
 |---|---|---|---|
@@ -277,21 +277,21 @@ Although the model's optimism is beneficial for making experimental decisions, i
 
 **Method:** Both arms are timed on GovReport `out128` at 512, 1k, and 2k input tokens (Llama-3.1-8B + EAGLE-3, A100-40, depth 3; runs pinned in [`roofline/decomp3.py`](roofline/decomp3.py)). Every engine step writes one row with its total time, the target forward, and the draft phase. From these:
 
-- Only pure decode steps are kept: on the baseline, all B sequences decoding one token; with speculation, all B sequences verifying V+1 tokens. Steps that mix in a prefill chunk are dropped.
+- We only keep pure decode steps. On the baseline, we require all B sequences decoding one token. With speculation, we require all B sequences verifying V+1 tokens. We drop steps that mix in a prefill chunk.
 - Each quantity is the median over those steps, since the first steps of a run include CUDA graph capture and batch fill.
-- Overhead is step time minus the target forward minus the draft phase.
+- Overhead is measured as full step time minus the target forward, minus the draft phase.
 
 | gap | model | measured |
 |---|---|---|
-| **1. Verify pass free when weight-bound** | verify = 1.00x an AR pass | **1.35–1.46x** at B ≤ 32; 2.81x vs 1.73 predicted at B=128 |
+| **1. Verify pass free when weight-bound** | verify = 1.00x an AR pass | **1.35–1.46x** at B ≤ 32 |
 | **2. Peak bandwidth is not achieved** | peak β | AR forward runs 1.18–1.35x the weight-bound prediction |
 | per-step overhead | n/a | 3–6% of a step |
 
-**Gap 1:** Calculated as median verify forward over median AR forward at the same $B$ and context against the model's $T_{verify}/T_{AR}$. We measure 1.35 to 1.46x where the model says 1.00, and 2.81x against 1.73 at $B$=128.
+**Gap 1:** Calculated as median verify forward over median AR forward at the same $B$ and context against the model's $T_{verify}/T_{AR}$. We measure 1.35 to 1.46x where the model says 1.00.
 
-**Gap 2:** Calculated as median AR forward against the model's $T_{AR}$: 18 to 35% slower. It applies to both speculation and normal  decoding, so it largely cancels in the speedup. Peak $C$ is untested.
+**Gap 2:** Calculated as median AR forward against the model's $T_{AR}$: 18 to 35% slower. It applies to both speculation and normal decoding, so it largely cancels in the speedup. Peak $C$ is untested.
 
-**Per-step overhead:** Calculated as step time minus the target forward minus the draft phase: 0.89 to 1.12 ms on the baseline and 1.02 to 2.81 ms with speculation, which is 3 to 6% of a step either way. Scheduling, sampling, and rejection bookkeeping are not where the model's error is.
+**Per-step overhead:** Calculated as step time minus the target forward minus the draft phase: 0.89 to 1.12 ms on the baseline and 1.02 to 2.81 ms with speculation, which is 3 to 6% of a step either way. Scheduling, sampling, etc. are not where the model's error is.
 
 ---
 
