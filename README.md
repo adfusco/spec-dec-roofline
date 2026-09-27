@@ -2,7 +2,7 @@
 
 Below is a roofline model of the decode pass that predicts when speculative decoding stops helping. We also display results testing the accuracy of the model. We optimized for the in-database operating point using our model: offline serving, throughput-maximizing, no latency SLA, with the batch pushed to whatever the KV cache can hold. We then tested this configuration in vLLM.
 
-Research done under Prof. Jignesh Patel at CMU, on in-database LLM query workloads.
+Research done by Alessandro Fusco, under Prof. Jignesh Patel at CMU.
 
 ---
 
